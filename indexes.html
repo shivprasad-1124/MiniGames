@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endless Runner</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    background:#f5f5f5;
+    transition:0.8s;
+}
+
+body.night{
+    background:#111827;
+}
+
+#game{
+    position:relative;
+    width:900px;
+    max-width:95vw;
+    height:300px;
+    border:3px solid #333;
+    overflow:hidden;
+    border-radius:12px;
+    background:white;
+    transition:0.8s;
+}
+
+body.night #game{
+    background:#1f2937;
+}
+
+#ground{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:50px;
+    background:#666;
+}
+
+#dino{
+    position:absolute;
+    left:60px;
+    bottom:50px;
+    width:40px;
+    height:50px;
+    background:#222;
+    border-radius:5px;
+}
+
+body.night #dino{
+    background:#fff;
+}
+
+.obstacle{
+    position:absolute;
+    bottom:50px;
+    width:30px;
+    background:green;
+    border-radius:4px;
+}
+
+#scoreboard{
+    position:absolute;
+    top:10px;
+    left:10px;
+    font-weight:bold;
+    color:#222;
+}
+
+body.night #scoreboard{
+    color:white;
+}
+
+#message{
+    position:absolute;
+    inset:0;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    background:rgba(0,0,0,.6);
+    color:white;
+}
+
+button{
+    margin-top:15px;
+    padding:10px 20px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    background:#2563eb;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="scoreboard">
+        Score: <span id="score">0</span> |
+        High: <span id="high">0</span>
+    </div>
+
+    <div id="dino"></div>
+    <div id="ground"></div>
+
+    <div id="message">
+        <h1>Game Over</h1>
+        <button onclick="restart()">Restart</button>
+    </div>
+
+</div>
+
+<script>
+const game=document.getElementById("game");
+const dino=document.getElementById("dino");
+const scoreEl=document.getElementById("score");
+const highEl=document.getElementById("high");
+const message=document.getElementById("message");
+
+let score=0;
+let speed=6;
+let jumping=false;
+let gameOver=false;
+
+let high=localStorage.getItem("runnerHigh")||0;
+highEl.textContent=high;
+
+function jump(){
+    if(jumping||gameOver)return;
+    jumping=true;
+
+    let up=0;
+    let pos=50;
+
+    let rise=setInterval(()=>{
+        if(up>=18){
+            clearInterval(rise);
+
+            let fall=setInterval(()=>{
+                if(pos<=50){
+                    clearInterval(fall);
+                    jumping=false;
+                }else{
+                    pos-=8;
+                    dino.style.bottom=pos+"px";
+                }
+            },20);
+
+        }else{
+            up++;
+            pos+=8;
+            dino.style.bottom=pos+"px";
+        }
+    },20);
+}
+
+document.addEventListener("keydown",e=>{
+    if(e.code==="Space"||e.code==="ArrowUp"){
+        jump();
+    }
+});
+
+game.addEventListener("click",jump);
+
+function createObstacle(){
+
+    if(gameOver)return;
+
+    const obs=document.createElement("div");
+    obs.className="obstacle";
+
+    let h=30+Math.random()*40;
+
+    obs.style.height=h+"px";
+    obs.style.left="900px";
+
+    game.appendChild(obs);
+
+    let x=900;
+
+    const move=setInterval(()=>{
+
+        if(gameOver){
+            clearInterval(move);
+            obs.remove();
+            return;
+        }
+
+        x-=speed;
+        obs.style.left=x+"px";
+
+        let dinoRect=dino.getBoundingClientRect();
+        let obsRect=obs.getBoundingClientRect();
+
+        if(
+            dinoRect.left<obsRect.right &&
+            dinoRect.right>obsRect.left &&
+            dinoRect.bottom>obsRect.top &&
+            dinoRect.top<obsRect.bottom
+        ){
+            endGame();
+        }
+
+        if(x<-40){
+            clearInterval(move);
+            obs.remove();
+        }
+
+    },20);
+
+    let next=1200-Math.random()*400;
+    setTimeout(createObstacle,next);
+}
+
+function gameLoop(){
+
+    if(gameOver)return;
+
+    score++;
+    scoreEl.textContent=score;
+
+    if(score>high){
+        high=score;
+        localStorage.setItem("runnerHigh",high);
+        highEl.textContent=high;
+    }
+
+    speed=6+score/250;
+
+    if(Math.floor(score/500)%2===1){
+        document.body.classList.add("night");
+    }else{
+        document.body.classList.remove("night");
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame(){
+    gameOver=true;
+    message.style.display="flex";
+}
+
+function restart(){
+
+    document.querySelectorAll(".obstacle").forEach(o=>o.remove());
+
+    score=0;
+    speed=6;
+    gameOver=false;
+    jumping=false;
+
+    dino.style.bottom="50px";
+
+    scoreEl.textContent="0";
+    message.style.display="none";
+
+    createObstacle();
+    requestAnimationFrame(gameLoop);
+}
+
+createObstacle();
+requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>
